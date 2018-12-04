@@ -38,15 +38,16 @@ public class OmxplayerProcess {
         public String toString() {return label;}
     }
 
-    public int INVALID_DIMENSION = Integer.MIN_VALUE;
+    public static int INVALID_VALUE = Integer.MIN_VALUE;
 
     private String filePath;
     private boolean mute;
     private AspectMode aspectMode;
     private AudioOutDevice audioOutDevice;
     private int[] window;
-    private int native_height = Integer.MIN_VALUE;
-    private int native_width = Integer.MIN_VALUE;
+    private int native_height = INVALID_VALUE;
+    private int native_width = INVALID_VALUE;
+    private int millibelles = INVALID_VALUE;
 
     private Process process;
 
@@ -145,6 +146,19 @@ public class OmxplayerProcess {
     }
 
     /**
+     * This allows the setting of the volume.  0 is loudest. -6000 is softest.
+     * @param millibelles double millibels, default 0, range [-6000:0]
+     * @return this instance of Omxplayer
+     */
+    public OmxplayerProcess setVolume(int millibelles) {
+        if (millibelles > 0) millibelles = 0;
+        else if (millibelles < -6000) millibelles = -6000;
+        
+        this.millibelles = millibelles;
+        return this;
+    }
+
+    /**
      * Set's the bounding box of video on the screen
      * @param x1 - Initial x position of the video
      * @param y1 - Intial y position of the video
@@ -195,6 +209,9 @@ public class OmxplayerProcess {
             }
             if (audioOutDevice != null) {
                 command += " --adev  " + audioOutDevice;
+            }
+            if (millibelles != INVALID_VALUE) {
+                command += " --vol " + millibelles;
             }
 
             command = command + " " + filePath;
