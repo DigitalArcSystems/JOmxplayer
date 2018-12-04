@@ -1,5 +1,8 @@
 package com.jomxplayer.core;
 
+import org.apache.commons.io.IOUtils;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -55,8 +58,10 @@ public class OmxplayerProcess {
     /**
      * @param filePath - File path of the video to play
      */
-    public OmxplayerProcess(String filePath){
+    public OmxplayerProcess(String filePath) throws IOException {
         this.filePath = filePath;
+        File file = new File(filePath);
+        if (!file.exists()) throw new IOException(filePath+" doesn't exist or can't be found.");
 
         //Make sure that the omxplayer process is killed when the Java application exits
         Runtime.getRuntime().addShutdownHook(new Thread(){
@@ -87,29 +92,30 @@ public class OmxplayerProcess {
 
     private void getDimensions() {
         //run omxplayer and just retrieve dimensions
-        ProcessBuilder pb = new ProcessBuilder("bash", "-c", "omxplayer -i "+filePath);
+        ProcessBuilder pb = new ProcessBuilder("bash", "-c", "omxplayer -i \""+filePath+"\"");
         Process tempProcess = null;
         InputStream errorStream = null;
         InputStream inputStream = null;
         try{
+            tempProcess = pb.start();
             errorStream = tempProcess.getErrorStream();
             inputStream = tempProcess.getInputStream();
-            tempProcess = pb.start();
-            tempProcess.wait();
+            tempProcess.waitFor();
             String output = convertStreamToString(inputStream);
-            String[] lines = output.split(System.getProperty("line.separator"));
+            String error = convertStreamToString(errorStream);
+            String[] lines = error.split(System.getProperty("line.separator"));
             boolean done = false;
             for (int i=0; i<lines.length && !done; i++ ) {
                 String line = lines[i];
                 if (line.contains("Stream") && line.contains("Video")) {
                     //remove everything in parentheses and brackets
-                    line = line.replaceAll("\\(.*\\)", "");
-                    line = line.replaceAll("\\[.*\\]", "");
                     String cs_line[] = line.split(",");
                     for (int j=0; j<cs_line.length; j++) {
-                        line = cs_line[j];
-                        if (line != null && line.contains("x")) {
-                            String numbers[] = line.split("x");
+                        String inner_line = cs_line[j].trim();
+                        inner_line = inner_line.replaceAll("\\(.*\\)", "").trim();
+                        inner_line = inner_line.replaceAll("\\[.*\\]", "").trim();
+                        if (inner_line != null && inner_line.matches("[0-9]*[x][0-9]*")) {
+                            String numbers[] = inner_line.split("x");
                             if (numbers.length == 2) {
                                 try {
                                     native_width = Integer.parseInt(numbers[0]);
@@ -228,7 +234,7 @@ public class OmxplayerProcess {
                 command += " --loop";
             }
 
-            command = command + " " + filePath;
+            command = command + " " + "\""+filePath+"\"";
 
             ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
 
@@ -249,8 +255,13 @@ public class OmxplayerProcess {
      * @return the converted string
      */
     private static String convertStreamToString(java.io.InputStream is) {
-        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-        return s.hasNext() ? s.next() : "";
+       String response = null;
+        try {
+            response = IOUtils.toString(is, "UTF-8");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return response;
     }
 
     /**
