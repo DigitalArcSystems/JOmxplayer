@@ -246,17 +246,18 @@ public class OmxplayerProcess {
 
             try{
                 process = pb.start();
-                if (runOnMediaEnd != null) {
-                    new Thread(() -> {
-                        try {
-                            process.waitFor();
-                            runOnMediaEnd.run();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
 
-                    }).start();
-                }
+                new Thread(() -> {
+                    try {
+                        process.waitFor();
+                        if (runOnMediaEnd != null) runOnMediaEnd.run();
+                        process = null;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                }).start();
+
 
             }
             catch (IOException e){
