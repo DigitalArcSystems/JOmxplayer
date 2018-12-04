@@ -25,11 +25,25 @@ public class OmxplayerProcess {
         }
     }
 
+    public enum AudioOutDevice {
+        HDMI("hdmi"),
+        LOCAL("local"),
+        BOTH("both");
+
+        private String label;
+
+        AudioOutDevice(String label) { this.label = label;}
+
+        @Override
+        public String toString() {return label;}
+    }
+
     public int INVALID_DIMENSION = Integer.MIN_VALUE;
 
     private String filePath;
     private boolean mute;
     private AspectMode aspectMode;
+    private AudioOutDevice audioOutDevice;
     private int[] window;
     private int native_height = Integer.MIN_VALUE;
     private int native_width = Integer.MIN_VALUE;
@@ -154,6 +168,16 @@ public class OmxplayerProcess {
     }
 
     /**
+     * Set's the audio output device of the Video.  Default: whatever is configured for system audio.
+     * @param outputDevice
+     * @return this instance of Omxplayer
+     */
+    public OmxplayerProcess setAudioOutputDevice(AudioOutDevice outputDevice) {
+        AudioOutDevice audioOutputDevice = outputDevice;
+        return this;
+    }
+
+    /**
      * Create a Java process and start playing the video
      * @return this instance of Omxplayer
      */
@@ -168,6 +192,9 @@ public class OmxplayerProcess {
             }
             if(aspectMode != null){
                 command += " --aspect-mode " + aspectMode;
+            }
+            if (audioOutDevice != null) {
+                command += " --adev  " + audioOutDevice;
             }
 
             command = command + " " + filePath;
