@@ -48,6 +48,7 @@ public class OmxplayerProcess {
     private int native_height = INVALID_VALUE;
     private int native_width = INVALID_VALUE;
     private int millibelles = INVALID_VALUE;
+    private boolean loop;
 
     private Process process;
 
@@ -153,7 +154,7 @@ public class OmxplayerProcess {
     public OmxplayerProcess setVolume(int millibelles) {
         if (millibelles > 0) millibelles = 0;
         else if (millibelles < -6000) millibelles = -6000;
-        
+
         this.millibelles = millibelles;
         return this;
     }
@@ -192,6 +193,16 @@ public class OmxplayerProcess {
     }
 
     /**
+     * Set's whether the media file loops or not.  The media file must be seekable for it to be looped.
+     * @param loop true if looping is desired.
+     * @return this instance of Omxplayer
+     */
+    public OmxplayerProcess setLoop(boolean loop) {
+        this.loop = loop;
+        return this;
+    }
+
+    /**
      * Create a Java process and start playing the video
      * @return this instance of Omxplayer
      */
@@ -212,6 +223,9 @@ public class OmxplayerProcess {
             }
             if (millibelles != INVALID_VALUE) {
                 command += " --vol " + millibelles;
+            }
+            if (loop) {
+                command += " --loop";
             }
 
             command = command + " " + filePath;
