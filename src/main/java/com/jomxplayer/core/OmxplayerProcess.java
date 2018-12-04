@@ -1,6 +1,7 @@
 package com.jomxplayer.core;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * A Java Process wrapper for easily handling Omxplayer
@@ -24,10 +25,14 @@ public class OmxplayerProcess {
         }
     }
 
+    public int INVALID_DIMENSION = Integer.MIN_VALUE;
+
     private String filePath;
     private boolean mute;
     private AspectMode aspectMode;
     private int[] window;
+    private int native_height = Integer.MIN_VALUE;
+    private int native_width = Integer.MIN_VALUE;
 
     private Process process;
 
@@ -44,6 +49,75 @@ public class OmxplayerProcess {
                 OmxplayerProcess.this.stop();
             }
         });
+    }
+
+    public int getNativeWidth() {
+        if (native_width < 0) {
+            getDimensions();
+        }
+
+        return native_width;
+    }
+
+
+    public int getNativeHeight() {
+        if (native_height < 0) {
+            getDimensions();
+        }
+
+        return native_height;
+    }
+
+
+    private void getDimensions() {
+        //run omxplayer and just retrieve dimensions
+        ProcessBuilder pb = new ProcessBuilder("bash", "-c", "omxplayer -i "+filePath);
+        Process tempProcess = null;
+        InputStream errorStream = null;
+        InputStream inputStream = null;
+        try{
+            errorStream = tempProcess.getErrorStream();
+            inputStream = tempProcess.getInputStream();
+            tempProcess = pb.start();
+            tempProcess.wait();
+            String output = convertStreamToString(inputStream);
+            String[] lines = output.split(System.getProperty("line.separator"));
+            boolean done = false;
+            for (int i=0; i<lines.length && !done; i++ ) {
+                String line = lines[i];
+                if (line.contains("Stream") && line.contains("Video")) {
+                    //remove everything in parentheses and brackets
+                    line = line.replaceAll("\\(.*\\)", "");
+                    line = line.replaceAll("\\[.*\\]", "");
+                    String cs_line[] = line.split(",");
+                    for (int j=0; j<cs_line.length; j++) {
+                        line = cs_line[j];
+                        if (line != null && line.contains("x")) {
+                            String numbers[] = line.split("x");
+                            if (numbers.length == 2) {
+                                try {
+                                    native_width = Integer.parseInt(numbers[0]);
+                                    native_height = Integer.parseInt(numbers[1]);
+                                    done = true;
+                                    break;
+                                } catch (NumberFormatException nfe)
+                                {
+                                    System.out.println("NumberFormatException: " + nfe.getMessage());
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+
+        }
+        catch (IOException e){
+            System.out.println(convertStreamToString(errorStream));
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -108,6 +182,17 @@ public class OmxplayerProcess {
             }
         }
         return this;
+    }
+
+
+    /**
+     * https://stackoverflow.com/questions/309424/how-to-read-convert-an-inputstream-into-a-string-in-java
+     * @param is stream to convert
+     * @return the converted string
+     */
+    private static String convertStreamToString(java.io.InputStream is) {
+        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+        return s.hasNext() ? s.next() : "";
     }
 
     /**
