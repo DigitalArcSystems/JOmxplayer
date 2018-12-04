@@ -52,6 +52,7 @@ public class OmxplayerProcess {
     private int native_width = INVALID_VALUE;
     private int millibelles = INVALID_VALUE;
     private boolean loop;
+    private Runnable runOnMediaEnd;
 
     private Process process;
 
@@ -208,6 +209,11 @@ public class OmxplayerProcess {
         return this;
     }
 
+    public OmxplayerProcess setOnEndOfMedia(Runnable runAtEnd) {
+        runOnMediaEnd = runAtEnd;
+        return this;
+    }
+
     /**
      * Create a Java process and start playing the video
      * @return this instance of Omxplayer
@@ -240,6 +246,18 @@ public class OmxplayerProcess {
 
             try{
                 process = pb.start();
+                if (runOnMediaEnd != null) {
+                    new Thread(() -> {
+                        try {
+                            process.waitFor();
+                            runOnMediaEnd.run();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                    }).start();
+                }
+
             }
             catch (IOException e){
                 e.printStackTrace();
