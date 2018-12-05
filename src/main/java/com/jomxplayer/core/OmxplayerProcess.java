@@ -179,9 +179,6 @@ public class OmxplayerProcess {
 
     /**
      * This allows the setting of the volume.  0 is loudest. -6000 is softest.
-     * NOTE: The formula for converting decimal percentage volumes to millibels is
-     *  (2000.0 * (Math.log((volume/100.0)))).  With volume being 1.0 at 100%.  This method doesn't perform this conversion
-     *  but instead takes the raw millibelles.
      * @param millibelles double millibels, default 0, range [-6000:0]
      * @return this instance of Omxplayer
      */
@@ -194,9 +191,25 @@ public class OmxplayerProcess {
     }
 
     /**
+     * This sets the volume as a percentage.  Forinstance passing in 50 will play the volume at 50% of recorded
+     * strength.  Passing in 150 will play at 50% above recorded strength.
+     * NOTE: he formula for converting decimal percentage volumes to millibels is
+     *  (2000.0 * (Math.log((percentage/100.0)))).  With volume being 1.0 at 100%.  This method doesn't perform this conversion
+     *  but instead takes the raw millibelles.
+     * @param percentage percentage of recorded strength (0-100 typically)
+     * @return this instance of Omxplayer
+     */
+    public OmxplayerProcess setVolumePercentage(int percentage) {
+        double volume = percentage/100.0;
+        int millibelles = (int) (2000.0 * (Math.log((volume/100.0))));
+        setVolume(millibelles);
+        return this;
+    }
+
+    /**
      * Set's the bounding box of video on the screen
      * @param x1 - Initial x position of the video
-     * @param y1 - Intial y position of the video
+     * @param y1 - Initial y position of the video
      * @param x2 - Ending x position of the video
      * @param y2 - Ending y position of the video
      * @return this instance of Omxplayer
@@ -204,6 +217,21 @@ public class OmxplayerProcess {
     public OmxplayerProcess setWindow(int x1, int y1, int x2, int y2) {
         this.window = new int[]{x1,y1,x2,y2};
         return this;
+    }
+
+    /**
+     * Given a screen resolution of screen_x and screen_y, this method sets the bounding box for the video so that
+     * the video appears in the middle of the screen at it's native resolution.  Please note, no attempt is made here
+     * to scale the video if it's too large.
+     * @param screen_x - The screens x resolution
+     * @param screen_y - The screens y resolution
+     * @return this instance of Omxplayer
+     */
+    public OmxplayerProcess setWindowInMiddle(int screen_x, int screen_y) {
+        obtainMediaInfo();
+        int x = (int) ( (screen_x * 0.5) - (getNativeWidth()*0.5)  );
+        int y = (int) ( (screen_y * 0.5) - (getNativeHeight()*0.5) );
+        return setWindow(x, y, x+getNativeWidth(), y+getNativeHeight());
     }
 
     /**
