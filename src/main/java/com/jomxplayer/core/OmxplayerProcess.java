@@ -1,7 +1,6 @@
 package com.jomxplayer.core;
 
 import org.apache.commons.io.IOUtils;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,6 +50,7 @@ public class OmxplayerProcess {
     private int native_height = INVALID_VALUE;
     private int native_width = INVALID_VALUE;
     private int millibelles = INVALID_VALUE;
+    private String mediaInfo = null;
     private boolean loop;
     private Runnable runOnMediaEnd;
 
@@ -58,6 +58,7 @@ public class OmxplayerProcess {
 
     /**
      * @param filePath - File path of the video to play
+     * @throws IOException if filePath isn't a valid file or can't be opened.
      */
     public OmxplayerProcess(String filePath) throws IOException {
         this.filePath = filePath;
@@ -73,25 +74,47 @@ public class OmxplayerProcess {
         });
     }
 
+    /**
+     * This provides the x resolution of video media.  If this isn't available it will launch a process to obtain it.
+     * @return the x resolution of the video media if any, or INVALID_VALUE if none.
+     */
     public int getNativeWidth() {
         if (native_width < 0) {
-            getDimensions();
+            obtainMediaInfo();
         }
 
         return native_width;
     }
 
 
+    /**
+     * This provides the y resolution of video media.  If this isn't available it will launch a process to obtain it.
+     * @return the y resolution of the video media if any, or INVALID_VALUE if none.
+     */
     public int getNativeHeight() {
         if (native_height < 0) {
-            getDimensions();
+            obtainMediaInfo();
         }
 
         return native_height;
     }
 
+    /**
+     * This provides the output from omxplayer -i.  This will launch a process to obtain that info if it hasn't
+     * already been done.
+     * @return This is the output of omxplayer -i on the media file or null if unavailable.
+     */
+    public String getMediaInfo() {
+        if (mediaInfo == null) {
+            obtainMediaInfo();
+        }
+        return mediaInfo;
+    }
 
-    private void getDimensions() {
+    /**
+     * This method determines the resolution of video media.  It actually launches a process of omxplayer just to do this
+     */
+    private void obtainMediaInfo() {
         //run omxplayer and just retrieve dimensions
         ProcessBuilder pb = new ProcessBuilder("bash", "-c", "omxplayer -i \""+filePath+"\"");
         Process tempProcess = null;
@@ -104,6 +127,7 @@ public class OmxplayerProcess {
             tempProcess.waitFor();
             String output = convertStreamToString(inputStream);
             String error = convertStreamToString(errorStream);
+            mediaInfo = error;
             String[] lines = error.split(System.getProperty("line.separator"));
             boolean done = false;
             for (int i=0; i<lines.length && !done; i++ ) {
@@ -155,6 +179,9 @@ public class OmxplayerProcess {
 
     /**
      * This allows the setting of the volume.  0 is loudest. -6000 is softest.
+     * NOTE: The formula for converting decimal percentage volumes to millibels is
+     *  (2000.0 * (Math.log((volume/100.0)))).  With volume being 1.0 at 100%.  This method doesn't perform this conversion
+     *  but instead takes the raw millibelles.
      * @param millibelles double millibels, default 0, range [-6000:0]
      * @return this instance of Omxplayer
      */
@@ -209,6 +236,12 @@ public class OmxplayerProcess {
         return this;
     }
 
+    /**
+     * This provides an opportunity for clients to run something at the conclusion of the process.  It does not fire
+     * at the conclusion of the media if looping is on.
+     * @param runAtEnd
+     * @return this instance of Omxplayer
+     */
     public OmxplayerProcess setOnEndOfMedia(Runnable runAtEnd) {
         runOnMediaEnd = runAtEnd;
         return this;
@@ -269,7 +302,7 @@ public class OmxplayerProcess {
 
 
     /**
-     * https://stackoverflow.com/questions/309424/how-to-read-convert-an-inputstream-into-a-string-in-java
+     * This is a simple utility to convert a Stream to a String for parsing
      * @param is stream to convert
      * @return the converted string
      */
