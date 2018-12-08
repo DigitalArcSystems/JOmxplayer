@@ -170,6 +170,7 @@ public class OmxplayerProcess {
 
     public OmxplayerProcess showStatusInformation(boolean show_status_information_on_overlay) {
         no_osd = !show_status_information_on_overlay;
+        return this;
     }
 
     /**
