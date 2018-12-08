@@ -53,6 +53,7 @@ public class OmxplayerProcess {
     private String mediaInfo = null;
     private boolean loop;
     private Runnable runOnMediaEnd;
+    private boolean no_osd = true;
 
     private Process process;
 
@@ -165,6 +166,10 @@ public class OmxplayerProcess {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public OmxplayerProcess showStatusInformation(boolean show_status_information_on_overlay) {
+        no_osd = !show_status_information_on_overlay;
     }
 
     /**
@@ -299,6 +304,9 @@ public class OmxplayerProcess {
             }
             if (loop) {
                 command += " --loop";
+            }
+            if (no_osd) {
+                command += " --no-osd";
             }
 
             command = command + " " + "\""+filePath+"\"";
