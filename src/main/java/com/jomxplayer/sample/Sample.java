@@ -25,13 +25,33 @@ public class Sample {
         y1 = 800/2 - player.getNativeHeight()/2;
         x2 = player.getNativeWidth()+x1;
         y2 = player.getNativeHeight()+y1;
+
+        final boolean finished[] = {false};
         player
-                .setMute(true)
-                .setAspectMode(OmxplayerProcess.AspectMode.LETTERBOX)
-                .setWindow(x1, y1, x2, y2);
+                //.setMute(true)
+                //.setAspectMode(OmxplayerProcess.AspectMode.LETTERBOX)
+                //.setWindow(x1, y1, x2, y2)
+                .setOnEndOfMedia(() -> {
+                    finished[0] = true;
+                });
 
-
-        player.play();
+        for (String nextFile : args) {
+            finished[0] = false;
+            System.out.println("Starting "+nextFile);
+            player.play(nextFile);
+            long start_time_ms = System.currentTimeMillis();
+            while (!finished[0]) {
+                try {
+                    Thread.sleep(100);
+                    if (System.currentTimeMillis() - start_time_ms > 5000) {
+                        player.stop();
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 }

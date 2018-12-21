@@ -55,7 +55,7 @@ public class OmxplayerProcess {
     private Runnable runOnMediaEnd;
     private boolean no_osd = true;
 
-    private Process process;
+    private BashProcess shellProcess;
 
     /**
      * @param filePath - File path of the video to play
@@ -65,7 +65,7 @@ public class OmxplayerProcess {
         this.filePath = filePath;
         File file = new File(filePath);
         if (!file.exists()) throw new IOException(filePath+" doesn't exist or can't be found.");
-
+        shellProcess = new BashProcess();
         //Make sure that the omxplayer process is killed when the Java application exits
         Runtime.getRuntime().addShutdownHook(new Thread(){
             @Override
@@ -281,59 +281,89 @@ public class OmxplayerProcess {
         return this;
     }
 
+
+    public OmxplayerProcess play(String mediaWithPath) throws IOException {
+        File file = new File(filePath);
+        if (!file.exists()) throw new IOException(filePath+" doesn't exist or can't be found.");
+        filePath = mediaWithPath;
+        return play();
+    }
+
     /**
      * Create a Java process and start playing the video
      * @return this instance of Omxplayer
      */
     public OmxplayerProcess play() {
-        if(process == null){
-            String command = "omxplayer";
-            if(mute){
-                command += " -n -1";
-            }
-            if(window != null){
-                command += String.format(" --win '%d %d %d %d'", window[0], window[1], window[2], window[3]);
-            }
-            if(aspectMode != null){
-                command += " --aspect-mode " + aspectMode;
-            }
-            if (audioOutDevice != null) {
-                command += " --adev  " + audioOutDevice;
-            }
-            if (millibelles != INVALID_VALUE) {
-                command += " --vol " + millibelles;
-            }
-            if (loop) {
-                command += " --loop";
-            }
-            if (no_osd) {
-                command += " --no-osd";
-            }
 
-            command = command + " " + "\""+filePath+"\"";
+        if (!shellProcess.isIdle()) {
+            //we are already playing another Media File
+            shellProcess.quitBackToCLI();
+            long start_time = System.currentTimeMillis();
+            while (!shellProcess.isIdle() && System.currentTimeMillis()-start_time < 3000) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (System.currentTimeMillis() - start_time > 1100) System.out.println("Took more than a second to shutdown");
+            if (!shellProcess.isIdle()) {
+                System.out.println("Warning:  Couldn't stop current process from playing");
+            }
+        }
 
-            ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
 
-            try{
-                process = pb.start();
+        String command = "omxplayer";
+        if(mute){
+            command += " -n -1";
+        }
+        if(window != null){
+            command += String.format(" --win '%d %d %d %d'", window[0], window[1], window[2], window[3]);
+        }
+        if(aspectMode != null){
+            command += " --aspect-mode " + aspectMode;
+        }
+        if (audioOutDevice != null) {
+            command += " --adev  " + audioOutDevice;
+        }
+        if (millibelles != INVALID_VALUE) {
+            command += " --vol " + millibelles;
+        }
+        if (loop) {
+            command += " --loop";
+        }
+        if (no_osd) {
+            command += " --no-osd";
+        }
 
+        command = command + " " + "\""+filePath+"\"";
+
+        try{
+            System.out.println(command);
+            if (!shellProcess.startCommand(command)) {
+                System.out.println("SHELL COMMAND DIDN'T START: "+command);
+            };
+
+            if (runOnMediaEnd != null) {
                 new Thread(() -> {
                     try {
-                        process.waitFor();
-                        if (runOnMediaEnd != null) runOnMediaEnd.run();
-                        process = null;
+                        while (!shellProcess.isIdle()) {
+                            Thread.sleep(100);
+                        }
+                        runOnMediaEnd.run();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
 
                 }).start();
+            }
 
 
-            }
-            catch (IOException e){
-                e.printStackTrace();
-            }
         }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+
         return this;
     }
 
@@ -357,15 +387,6 @@ public class OmxplayerProcess {
      * Stop the Java process associated with the video
      */
     public void stop() {
-        if(process != null){
-            try{
-                process.getOutputStream().write('q');
-                process.getOutputStream().flush();
-                process = null;
-            }
-            catch (IOException e){
-                e.printStackTrace();
-            }
-        }
+        shellProcess.shutdown();
     }
 }
