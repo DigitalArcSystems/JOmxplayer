@@ -1,9 +1,11 @@
 package com.jomxplayer.core;
 
 import org.apache.commons.io.IOUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 
 /**
  * A Java Process wrapper for easily handling Omxplayer
@@ -57,14 +59,8 @@ public class OmxplayerProcess {
 
     private BashProcess shellProcess;
 
-    /**
-     * @param filePath - File path of the video to play
-     * @throws IOException if filePath isn't a valid file or can't be opened.
-     */
-    public OmxplayerProcess(String filePath) throws IOException {
-        this.filePath = filePath;
-        File file = new File(filePath);
-        if (!file.exists()) throw new IOException(filePath+" doesn't exist or can't be found.");
+
+    public OmxplayerProcess() throws IOException {
         shellProcess = new BashProcess();
         //Make sure that the omxplayer process is killed when the Java application exits
         Runtime.getRuntime().addShutdownHook(new Thread(){
@@ -73,6 +69,23 @@ public class OmxplayerProcess {
                 OmxplayerProcess.this.stop();
             }
         });
+    }
+
+    public OmxplayerProcess(URL urlToPlay) throws IOException {
+        this();
+        filePath = urlToPlay.toString();
+    }
+
+    /**
+     * @param filePath - File path of the video to play
+     * @throws IOException if filePath isn't a valid file or can't be opened.
+     */
+    public OmxplayerProcess(String filePath) throws IOException {
+        this();
+        this.filePath = filePath;
+        File file = new File(filePath);
+        if (!file.exists()) throw new IOException(filePath+" doesn't exist or can't be found.");
+
     }
 
     /**
@@ -206,8 +219,8 @@ public class OmxplayerProcess {
      * @return this instance of Omxplayer
      */
     public OmxplayerProcess setVolumePercentage(int percentage) {
-        double volume = percentage/100.0;
-        int millibelles = (int) (2000.0 * (Math.log((volume/100.0))));
+
+        int millibelles = (int) (2000.0 * (Math.log((percentage/100.0))));
         setVolume(millibelles);
         return this;
     }
@@ -281,6 +294,15 @@ public class OmxplayerProcess {
         return this;
     }
 
+    public Runnable getOnEndOfMedia() {
+        return runOnMediaEnd;
+    }
+
+
+    public OmxplayerProcess play(URL mediaURL) {
+        filePath = mediaURL.toString();
+        return play();
+    }
 
     public OmxplayerProcess play(String mediaWithPath) throws IOException {
         File file = new File(filePath);
@@ -299,14 +321,15 @@ public class OmxplayerProcess {
             //we are already playing another Media File
             shellProcess.quitBackToCLI();
             long start_time = System.currentTimeMillis();
-            while (!shellProcess.isIdle() && System.currentTimeMillis()-start_time < 3000) {
+            while (!shellProcess.isIdle() && System.currentTimeMillis()-start_time < 6000) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
-            if (System.currentTimeMillis() - start_time > 1100) System.out.println("Took more than a second to shutdown");
+            if (System.currentTimeMillis() - start_time > 1100) System.out.println("Took "+
+                    (System.currentTimeMillis() - start_time)/1000.0 + "s to shutdown.");
             if (!shellProcess.isIdle()) {
                 System.out.println("Warning:  Couldn't stop current process from playing");
             }
@@ -343,7 +366,7 @@ public class OmxplayerProcess {
             if (!shellProcess.startCommand(command)) {
                 System.out.println("SHELL COMMAND DIDN'T START: "+command);
             };
-
+            System.out.println("Playing");
             if (runOnMediaEnd != null) {
                 new Thread(() -> {
                     try {
@@ -367,7 +390,6 @@ public class OmxplayerProcess {
         return this;
     }
 
-
     /**
      * This is a simple utility to convert a Stream to a String for parsing
      * @param is stream to convert
@@ -389,4 +411,51 @@ public class OmxplayerProcess {
     public void stop() {
         shellProcess.shutdown();
     }
+
+    public void decreaseSpeed() {
+        shellProcess.decreaseSpeed();
+    }
+
+    public void increaseSpeed() {
+        shellProcess.increaseSpeed();
+    }
+
+    public void rewind() {
+        shellProcess.rewind();
+    }
+
+    public void fastForward() {
+       shellProcess.fastForward();
+
+    }
+
+    public void toggelPausePlay() {
+        shellProcess.toggelPausePlay();
+    }
+
+    public void decreaseVolume() {
+        shellProcess.decreaseVolume();
+    }
+
+    public void increaseVolume(){
+        shellProcess.increaseVolume();
+    }
+
+    public void back_30_seconds(){
+        shellProcess.back_30_seconds();
+    }
+
+    public void forward_30_seconds() {
+        shellProcess.forward_30_seconds();
+    }
+
+    public void back_10_minutes() {
+        shellProcess.back_10_minutes();
+    }
+
+    public void forward_10_minutes() {
+        shellProcess.forward_10_minutes();
+    }
+
+
 }

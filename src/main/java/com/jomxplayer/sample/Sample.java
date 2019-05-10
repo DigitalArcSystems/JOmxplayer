@@ -36,20 +36,29 @@ public class Sample {
                 });
 
         for (String nextFile : args) {
-            finished[0] = false;
-            System.out.println("Starting "+nextFile);
+
+            System.out.println("Starting BBBBB"+nextFile);
             player.play(nextFile);
+            finished[0] = false;
+            System.out.println("Exited Play Finished: "+finished[0]);
             long start_time_ms = System.currentTimeMillis();
             while (!finished[0]) {
                 try {
+                    System.out.print(".");
                     Thread.sleep(100);
-                    if (System.currentTimeMillis() - start_time_ms > 5000) {
-                        player.stop();
+                    if (System.currentTimeMillis() - start_time_ms > 3000) {
+                        //player.stop();
+                        System.out.println("Break");
                         break;
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            }
+            System.out.println("Finished Looping through all video");
+            System.out.println("skipping forward 30 seconds at a time for 5 times, 5 seconds between");
+            for (int i=0; i<5; i++) {
+                //
             }
         }
     }

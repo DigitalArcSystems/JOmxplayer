@@ -76,6 +76,8 @@ public class BashProcess {
     protected Process shell = null;
     protected Thread  outputProcessing;
     protected boolean debug = true;
+    private boolean already_quitting;
+    private int omxplayer_executed = 0;
 
 
     public BashProcess() throws IOException {
@@ -107,13 +109,17 @@ public class BashProcess {
                 if (currentStdOut != null) {
                     if (currentStdOut.trim().equals(PREVIOUS_COMMAND_FINISHED)) {
                         idle = true;
+                        if (quitting()) setQuitting(false);
                         //fire commandFinishedListeners
                     }
                 }
                 if (debug && currentStdOut != null) System.out.println(currentStdOut);
                 String currentErrorOut = null;
                 if (stdError.ready()) stdError.readLine();
-                if (debug && currentErrorOut != null) System.out.println(currentErrorOut);
+                if (currentErrorOut != null) {
+                    if (currentErrorOut.contains("Subtitle count:")) omxplayer_executed++;
+                    if (debug ) System.out.println(currentErrorOut);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -131,11 +137,17 @@ public class BashProcess {
 
     public boolean startCommand(String command) throws IOException {
         if (!isIdle()) return false;
+        int thisCommand = omxplayer_executed;
         stdIn.flush();
         stdIn.write("echo;echo;"+command+";echo;echo "+PREVIOUS_COMMAND_FINISHED+"\n");
         stdIn.flush();
-
         idle = false;
+        System.out.println("IDLE IS FALSE");
+        while (command.contains("omxplayer") && thisCommand < omxplayer_executed) try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return true;
     }
 
@@ -196,7 +208,8 @@ public class BashProcess {
     }
 
     public void quitBackToCLI() {
-        if (!isIdle()) {
+        if (!isIdle() && !quitting()) {
+            setQuitting(true);
             try {
                 stdIn.write("q");
                 stdIn.flush();
@@ -204,6 +217,14 @@ public class BashProcess {
                 e.printStackTrace();
             }
         }
+    }
+
+    protected synchronized  boolean quitting() {
+        return already_quitting;
+    }
+
+    protected synchronized void setQuitting(boolean amIQuitting) {
+        already_quitting = amIQuitting;
     }
 
     public void decreaseVolume() {
